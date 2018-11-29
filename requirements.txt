@@ -1,0 +1,5 @@
+notebook
+numpy
+Pillow
+PyYaml
+requests
