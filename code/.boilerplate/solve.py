@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import re
 import sys
 
 
@@ -9,7 +10,8 @@ def trace(*args, **kwargs):
 
 
 def solve(t):
-    t = t.splitlines()
+    t = [[int(x) for x in re.findall(r'-?\d+', s)]
+        for s in t.splitlines()]
     pass
 
 
