@@ -22,14 +22,21 @@ def get(url, cookie, ua):
             time.sleep(1)
 
 
-def prep(day, year=None):
+def prep(day=None, year=None):
+    now = datetime.utcnow()
+
     if year is None:
-        year = datetime.now().year
-    day = int(day)
+        year = now.year
+
+    if day is None:
+        day = (now - datetime(year, 12, 1)).days + 1
+    else:
+        day = int(day)
+
     mydir = os.path.dirname(os.path.realpath(__file__))
     codes = os.path.join(mydir, 'code')
     boildir = os.path.join(codes, '.boilerplate')
-    daydir = os.path.join(codes, '{:02}'.format(day))
+    daydir = os.path.join(codes, '{:02}-1'.format(day))
     dayurl = 'http://adventofcode.com/{}/day/{}/input'.format(year, day)
 
     with open(os.path.join(mydir, '.prep'), 'r') as f:
@@ -70,9 +77,9 @@ def prep(day, year=None):
 if __name__ == '__main__':
     import argparse
 
-    cli = argparse.ArgumentParser(description='Setup directory for day\'s challenge')
-    cli.add_argument('day', type=int, help='Challenge day number')
-    cli.add_argument('--year', type=int, default=None, help='Challenge year')
+    cli = argparse.ArgumentParser(description='Setup directory for a day\'s challenge')
+    cli.add_argument('day', type=int, nargs='?', help='Day number')
+    cli.add_argument('--year', type=int, default=None, help='Year')
 
     args = cli.parse_args()
 
