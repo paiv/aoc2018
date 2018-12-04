@@ -10,7 +10,7 @@ def trace(*args, **kwargs):
 
 
 def solve(t):
-    t = [[int(x) for x in re.findall(r'-?\d+', s)]
+    t = [[*map(int, re.findall(r'-?\d+', s))]
         for s in t.splitlines()]
     pass
 
