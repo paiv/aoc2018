@@ -138,5 +138,3 @@ After 4 seconds:
 After 3 seconds, the message appeared briefly: HI. Of course, your message will be much longer and will take many more seconds to appear.
 
 What message will eventually appear in the sky?
-
-Your puzzle answer was PHLGRNFK.
