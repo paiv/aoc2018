@@ -47,5 +47,3 @@ In the example above, Guard #10 spent the most minutes asleep, a total of 50 min
 While this example listed the entries in chronological order, your entries are in the order you found them. You'll need to organize them before they can be analyzed.
 
 What is the ID of the guard you chose multiplied by the minute you chose? (In the above example, the answer would be 10 * 24 = 240.)
-
-Your puzzle answer was 84636.
