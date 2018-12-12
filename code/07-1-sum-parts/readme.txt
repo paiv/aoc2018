@@ -35,5 +35,3 @@ Finally, E is completed.
 So, in this example, the correct order is CABDFE.
 
 In what order should the steps in your instructions be completed?
-
-Your puzzle answer was ABGKCMVWYDEHFOPQUILSTNZRJX.
