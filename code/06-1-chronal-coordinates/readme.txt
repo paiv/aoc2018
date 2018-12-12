@@ -46,5 +46,3 @@ Locations shown as . are equally far from two or more coordinates, and so they d
 In this example, the areas of coordinates A, B, C, and F are infinite - while not shown here, their areas extend forever outside the visible grid. However, the areas of coordinates D and E are finite: D is closest to 9 locations, and E is closest to 17 (both including the coordinate's location itself). Therefore, in this example, the size of the largest area is 17.
 
 What is the size of the largest area that isn't infinite?
-
-Your puzzle answer was 3449.
