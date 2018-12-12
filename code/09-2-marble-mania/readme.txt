@@ -2,5 +2,3 @@
 Amused by the speed of your answer, the Elves are curious:
 
 What would the winning Elf's score be if the number of the last marble were 100 times larger?
-
-Your puzzle answer was 3150377341.
