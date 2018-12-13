@@ -84,16 +84,10 @@ def solve(t, focus=6):
         '/':  dict(zip([1, -1j, -1, 1j], [-1j, 1, 1j, -1])),
         }
 
-    visited = set()
-
     while len(carts) > 1:
         next_carts = list()
         hits = set(p for p, *_ in carts)
         collid = set()
-
-        state = tuple(carts)
-        if state in visited: return
-        visited.add(state)
 
         for pos, dr, turn, id in sorted(carts, key=lambda p: (p[0].imag, p[0].real)):
             hits.discard(pos)
@@ -119,7 +113,7 @@ def solve(t, focus=6):
 
         if 1:
             follow(track, carts, focus)
-            time.sleep(0.12)
+            time.sleep(1/30)
 
     pos, *_ = carts[0]
     res = f'{int(pos.real)},{int(pos.imag)}'
