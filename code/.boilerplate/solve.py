@@ -16,10 +16,10 @@ def solve(t):
 
 
 def test():
-    t = """
+    t = r"""
 """.strip('\n')
 
-    # assert solve(t) == 0, solve(t)
+    # assert solve(t) == 0
 
     # assert solve('') == 0
 
