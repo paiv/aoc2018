@@ -22,16 +22,10 @@ def solve(t):
         '/':  dict(zip([1, -1j, -1, 1j], [-1j, 1, 1j, -1])),
         }
 
-    visited = set()
-
     while len(carts) > 1:
         next_carts = list()
         hits = set(p for p, *_ in carts)
         collid = set()
-
-        state = tuple(carts)
-        if state in visited: return
-        visited.add(state)
 
         for pos, dr, turn, id in sorted(carts, key=lambda p: (p[0].imag, p[0].real)):
             hits.discard(pos)
