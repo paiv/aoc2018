@@ -1,7 +1,7 @@
 #!/usr/bin/env pypy3 -O
-import heapq
 import itertools
 import sys
+from collections import deque
 
 
 VERBOSE = 2 if __debug__ else 1
@@ -10,21 +10,18 @@ def trace(*args, **kwargs):
     if VERBOSE > 1: print(*args, file=sys.stderr, **kwargs)
 
 
-def md(a, b):
-    ay,ax = a
-    by,bx = b
-    return abs(by-ay) + abs(bx-ax)
-
-
-def find_path(start, goal, board):
-    fringe = [(md(start, goal), start, tuple())]
+def goal(unit, targets, board):
+    fringe = deque()
     visited = set()
 
+    start = unit[0]
+    fringe.append((start, tuple()))
+
     while fringe:
-        _, pos, path = heapq.heappop(fringe)
+        pos, path = fringe.popleft()
         (py,px) = pos
 
-        if pos == goal:
+        if pos in targets:
             return path
         if pos in visited: continue
         visited.add(pos)
@@ -32,15 +29,7 @@ def find_path(start, goal, board):
         for dy,dx in [(-1,0),(0,-1),(0,1),(1,0)]:
             tpos = (py+dy, px+dx)
             if board.get(tpos, None) == '.':
-                heapq.heappush(fringe, (len(path) + md(pos, tpos), tpos, path + (tpos,)))
-
-
-def goal(unit, targets, board):
-    ps = [*filter(None, (find_path(unit[0], t, board) for t in targets))]
-    if not ps: return []
-    n = min(map(len, ps))
-    ps = sorted([p for p in ps if len(p) == n])
-    return ps[0]
+                fringe.append((tpos, path + (tpos,)))
 
 
 def resolve1(unit, board, units):
