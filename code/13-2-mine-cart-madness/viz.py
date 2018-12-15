@@ -1,39 +1,9 @@
-#!/usr/bin/env pypy3
+#!/usr/bin/env python
 import io
-import sys
 import time
 
 
-VERBOSE = 2 if __debug__ else 1
-
-def trace(*args, **kwargs):
-    if VERBOSE > 1: print(*args, file=sys.stderr, **kwargs)
-
-
-def dump(track, carts):
-    with io.StringIO() as so:
-        print(file=so)
-        track = dict(track)
-        icon = dict(zip([-1, 1, -1j, 1j], '<>^v'))
-        for k, v, *_ in carts:
-            track[k] = icon[v]
-        ax = int(min(p.real for p in track))
-        bx = int(max(p.real for p in track))
-        ay = int(min(p.imag for p in track))
-        by = int(max(p.imag for p in track))
-        for y in range(ay, by+1):
-            for x in range(ax, bx+1):
-                c = track.get((y*1j+x), ' ')
-                if c in '<>^v':
-                    print('\033[1;37;44m', end='', file=so)
-                print(c, end='', file=so)
-                if c in '<>^v':
-                    print('\033[0m', end='', file=so)
-            print(file=so)
-        trace(so.getvalue())
-
-
-def follow(track, carts, n, wx=60, wy=12):
+def dump(track, carts, focus=None):
     with io.StringIO() as so:
         print(file=so)
         track = dict(track)
@@ -41,13 +11,42 @@ def follow(track, carts, n, wx=60, wy=12):
         p = None
         for k, v, _, id in carts:
             track[k] = icon[v]
-            if id == n: p = k
+            if id == focus: p = k
+        ax = int(min(p.real for p in track))
+        bx = int(max(p.real for p in track))
+        ay = int(min(p.imag for p in track))
+        by = int(max(p.imag for p in track))
+        for y in range(ay, by+1):
+            for x in range(ax, bx+1):
+                q = (y*1j+x)
+                c = track.get(q, ' ')
+                if c in '<>^v':
+                    print(('\033[1;37;41m' if q == p else '\033[1;37;44m'), end='', file=so)
+                    # print('\033[1;37;44m', end='', file=so)
+                print(c, end='', file=so)
+                if c in '<>^v':
+                    print('\033[0m', end='', file=so)
+            print(file=so)
+        print(so.getvalue())
+
+
+def follow(track, carts, focus, wx=60, wy=12):
+    with io.StringIO() as so:
+        print(file=so)
+        track = dict(track)
+        icon = dict(zip([-1, 1, -1j, 1j], '<>^v'))
+        p = None
+        for k, v, _, id in carts:
+            track[k] = icon[v]
+            if id == focus: p = k
         if p is None: return
+        print(f'{int(p.real)},{int(p.imag)}', file=so)
         ax = int(max(p.real - wx, min(p.real for p in track)))
         bx = int(min(ax + 2 * wx, max(p.real for p in track)))
-        # ay = int(max(p.imag - wy, min(p.imag for p in track)))
-        ay = int(p.imag - wy)
-        by = int(p.imag + wy)
+        # ay = int(p.imag - wy)
+        # by = int(p.imag + wy)
+        ay = int(max(p.imag - wy, min(p.imag for p in track)))
+        by = int(min(p.imag + wy, max(p.imag for p in track)))
         for y in range(ay, by+1):
             for x in range(ax, bx+1):
                 q = (y*1j+x)
@@ -58,12 +57,12 @@ def follow(track, carts, n, wx=60, wy=12):
                 if c in '<>^v':
                     print('\033[0m', end='', file=so)
             print(file=so)
-        trace(so.getvalue())
+        print(so.getvalue())
 
 
-def solve(t, focus=6):
+def viz(file, focus=0, rate=1):
     track = {(y*1j + x):v
-        for y, row in enumerate(t.splitlines())
+        for y, row in enumerate(file.readlines())
         for x, v in enumerate(row)
         if not v.isspace()}
 
@@ -75,7 +74,7 @@ def solve(t, focus=6):
     dirs = dict(zip('<>^v', (-1, 1, -1j, 1j)))
     carts = [(k, dirs[v], 0, i) for i, (k, v) in enumerate(carts.items())]
 
-    dump(track, carts)
+    dump(track, carts, focus=focus)
 
     turns = (-1j, 1, 1j)
 
@@ -111,35 +110,20 @@ def solve(t, focus=6):
 
         carts = [(p,dr,h,id) for p, dr, h, id in next_carts if id not in collid]
 
-        if 1:
-            follow(track, carts, focus)
-            time.sleep(1/30)
+        if focus in collid: return
 
-    pos, *_ = carts[0]
-    res = f'{int(pos.real)},{int(pos.imag)}'
-    trace(res)
-    return res
-
-
-def test():
-    t = r"""
-/>-<\
-|   |
-| /<+-\
-| | | v
-\>+</ |
-  |   ^
-  \<->/
-""".strip('\n')
-
-    assert solve(t, focus=8) == '6,4'
+        follow(track, carts, focus=focus)
+        time.sleep(rate)
 
 
 if __name__ == '__main__':
-    test()
+    import argparse
+    import sys
 
-    import fileinput
-    with fileinput.input() as f:
-        text = ''.join(f).strip('\n')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--focus', default=0, type=int, help='Focus on this cart')
+    parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Track map')
+    parser.add_argument('-r', '--rate', default=1/3, type=float, help='Frame rate')
+    args = parser.parse_args()
 
-    print(solve(text))
+    viz(file=args.file, focus=args.focus, rate=args.rate)
