@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import io
 import itertools
+import subprocess
 import sys
 import time
 from collections import deque
@@ -46,34 +47,58 @@ def dump_state(board, units):
     dump(grid, units)
 
 
-def render(board, frames, output):
-    sims = {n:Image.open(f'sprites/{n}.png') for n in 'elf goblin grass wall'.split()}
-    stridex,stridey = sims['wall'].size
-    sprites = {k:sims[n] for n,k in zip('elf goblin grass wall'.split(), 'EG.#')}
+def render(board, frames, output, rate=1):
+    def render_frames():
+        sprites = 'elf goblin grass wall'.split()
+        sims = {n:Image.open(f'sprites/{n}.png') for n in sprites}
+        sprites = {k:sims[n] for n,k in zip(sprites, 'EG.#')}
+        stridex, stridey = next(iter(sprites.values())).size
 
-    ax = min(x for y,x in board.keys())
-    bx = max(x for y,x in board.keys())
-    ay = min(y for y,x in board.keys())
-    by = max(y for y,x in board.keys())
-    w,h = (bx-ax+1), (by-ay+1)
+        ax = min(x for y,x in board.keys())
+        bx = max(x for y,x in board.keys())
+        ay = min(y for y,x in board.keys())
+        by = max(y for y,x in board.keys())
+        w,h = (bx-ax+1), (by-ay+1)
 
-    ims = list()
+        for units in frames:
+            grid = dict(board)
+            for p, x, hp in units:
+                if hp: grid[p] = x
 
-    for units in frames:
-        grid = dict(board)
-        for p, x, hp in units:
-            if hp: grid[p] = x
+            so = Image.new('RGB', (w * stridex, h * stridey))
+            for y in range(ay, by+1):
+                for x in range(ax, bx+1):
+                    s = sprites[grid[y,x]]
+                    so.paste(s, (x * stridex, y * stridey))
+            yield so
 
-        so = Image.new('RGBA', (w * stridex, h * stridey))
-        for y in range(ay, by+1):
-            for x in range(ax, bx+1):
-                s = sprites[grid[y,x]]
-                so.paste(s, (x * stridex, y * stridey))
-        ims.append(so)
+    if output.endswith('.gif'):
+        ims = list(render_frames())
+        ims[0].save(output, save_all=True, append_images=ims[1:], duration=100, loop=True)
+        for im in ims: im.close()
 
-    ims[0].save(output, save_all=True, append_images=ims[1:], duration=100)
+    elif output.endswith('.mp4'):
+        ims = render_frames()
+        im = next(ims)
+        (w, h) = im.size
 
-    for im in ims: im.close()
+        with subprocess.Popen(f'ffmpeg -f rawvideo -s {w}x{h} -pix_fmt rgb24 -r {rate} -i - -an -codec:v mpeg4 -y {output}'.split(),
+            stdin=subprocess.PIPE, stderr=subprocess.PIPE) as codec:
+
+            codec.stdin.write(im.tobytes())
+            im.close()
+
+            for im in ims:
+                try:
+                    codec.stdin.write(im.tobytes())
+                except BrokenPipeError:
+                    print(codec.stderr.read(), file=sys.stderr)
+                    break
+                finally:
+                    im.close()
+
+    else:
+        raise NotImplementedError()
 
 
 def goal(unit, targets, board):
@@ -181,13 +206,13 @@ def viz(file, atk=3, rate=1, output=None):
     res, frames = runsim(board, units, atk=atk)
 
     if output:
-        render(board, frames, output)
+        render(board, frames, output, rate=rate)
 
     else:
         for round, units in enumerate(frames):
             trace(round)
             dump_state(board, units)
-            time.sleep(rate)
+            time.sleep(1/rate)
         trace(round, 'x', res // round, '=', res)
 
 
@@ -198,7 +223,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--atk', default=3, type=int, help='Elf attack power')
     parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Map file')
-    parser.add_argument('-r', '--rate', default=1/3, type=float, help='Frame rate')
+    parser.add_argument('-r', '--rate', default=3, type=float, help='Frame rate')
     parser.add_argument('-o', '--output', help='Output file')
     args = parser.parse_args()
 
