@@ -82,8 +82,11 @@ def render(board, frames, output, rate=1):
         im = next(ims)
         (w, h) = im.size
 
-        with subprocess.Popen(f'ffmpeg -f rawvideo -s {w}x{h} -pix_fmt rgb24 -r {rate} -i - -an -codec:v mpeg4 -y {output}'.split(),
-            stdin=subprocess.PIPE, stderr=subprocess.PIPE) as codec:
+        # out_fmt = '-codec:v mpeg4'
+        out_fmt = '-codec:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -preset veryslow'
+        ffmpeg = f'ffmpeg -f rawvideo -s {w}x{h} -pix_fmt rgb24 -r {rate} -i - -an {out_fmt} -y {output}'.split()
+
+        with subprocess.Popen(ffmpeg, stdin=subprocess.PIPE, stderr=subprocess.PIPE) as codec:
 
             codec.stdin.write(im.tobytes())
             im.close()
