@@ -1,9 +1,10 @@
-#!/usr/bin/env pypy3
+#!/usr/bin/env python
 import io
 import itertools
 import sys
 import time
 from collections import deque
+from PIL import Image
 
 
 VERBOSE = 2 if __debug__ else 1
@@ -41,9 +42,38 @@ def dump_state(board, units):
     if VERBOSE < 2: return
     grid = dict(board)
     for p, x, hp in units:
-        if hp:
-            grid[p] = x
+        if hp: grid[p] = x
     dump(grid, units)
+
+
+def render(board, frames, output):
+    sims = {n:Image.open(f'sprites/{n}.png') for n in 'elf goblin grass wall'.split()}
+    stridex,stridey = sims['wall'].size
+    sprites = {k:sims[n] for n,k in zip('elf goblin grass wall'.split(), 'EG.#')}
+
+    ax = min(x for y,x in board.keys())
+    bx = max(x for y,x in board.keys())
+    ay = min(y for y,x in board.keys())
+    by = max(y for y,x in board.keys())
+    w,h = (bx-ax+1), (by-ay+1)
+
+    ims = list()
+
+    for units in frames:
+        grid = dict(board)
+        for p, x, hp in units:
+            if hp: grid[p] = x
+
+        so = Image.new('RGBA', (w * stridex, h * stridey))
+        for y in range(ay, by+1):
+            for x in range(ax, bx+1):
+                s = sprites[grid[y,x]]
+                so.paste(s, (x * stridex, y * stridey))
+        ims.append(so)
+
+    ims[0].save(output, save_all=True, append_images=ims[1:], duration=100)
+
+    for im in ims: im.close()
 
 
 def goal(unit, targets, board):
@@ -108,32 +138,22 @@ def attack(unit, units, atk=3):
     return units
 
 
-def viz(file, atk=3, rate=1):
-    board = {(y, x):v for y, row in enumerate(file.readlines())
-        for x, v in enumerate(row)
-        if v in '#.EG'}
-
-    state = dict(board)
-    units = [(k, v, 200) for k, v in board.items() if v in 'EG']
-    board = {k:('.' if v in 'EG' else v) for k, v in board.items()}
+def runsim(board, units, atk=3):
+    frames = list()
+    res = None
 
     for round in itertools.count():
-        if 1:
-            trace(round)
-            dump_state(board, units)
-            time.sleep(rate)
+        frames.append(list(units))
 
         units = sorted((p for p in units if p[2]), key=lambda p: p[0])
 
         for iu in range(len(units)):
 
             if len(set(id for _,id,hp in units if hp)) == 1:
-                if 1:
-                    trace(round)
-                    dump_state(board, units)
                 hp = sum(hp for _,_,hp in units)
-                trace(round, 'x', hp, '=', round * hp)
-                return round * hp
+                res = round * hp
+                frames.append(list(units))
+                return res, frames
 
             unit = units[iu]
             pos,id,hp = unit
@@ -149,6 +169,28 @@ def viz(file, atk=3, rate=1):
             units = attack(unit, units, atk=(atk if id == 'E' else 3))
 
 
+def viz(file, atk=3, rate=1, output=None):
+    board = {(y, x):v for y, row in enumerate(file.readlines())
+        for x, v in enumerate(row)
+        if v in '#.EG'}
+
+    state = dict(board)
+    units = [(k, v, 200) for k, v in board.items() if v in 'EG']
+    board = {k:('.' if v in 'EG' else v) for k, v in board.items()}
+
+    res, frames = runsim(board, units, atk=atk)
+
+    if output:
+        render(board, frames, output)
+
+    else:
+        for round, units in enumerate(frames):
+            trace(round)
+            dump_state(board, units)
+            time.sleep(rate)
+        trace(round, 'x', res // round, '=', res)
+
+
 if __name__ == '__main__':
     import argparse
     import sys
@@ -157,6 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atk', default=3, type=int, help='Elf attack power')
     parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Map file')
     parser.add_argument('-r', '--rate', default=1/3, type=float, help='Frame rate')
+    parser.add_argument('-o', '--output', help='Output file')
     args = parser.parse_args()
 
-    viz(file=args.file, atk=args.atk, rate=args.rate)
+    viz(file=args.file, atk=args.atk, rate=args.rate, output=args.output)
