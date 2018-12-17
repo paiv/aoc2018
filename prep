@@ -10,8 +10,8 @@ from datetime import datetime
 def get(url, cookie, ua):
     cookies = {'session': cookie}
     headers = {'user-agent': ua}
-
-    for i in range(3):
+    delay = 1
+    while True:
         try:
             r = requests.get(url, headers=headers, cookies=cookies)
             r.raise_for_status()
@@ -19,7 +19,8 @@ def get(url, cookie, ua):
             return r.text
         except Exception as e:
             print(e)
-            time.sleep(1)
+            time.sleep(delay)
+            delay *= 1.44
 
 
 def prep(day=None, year=None):
