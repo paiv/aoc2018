@@ -50,7 +50,8 @@ def factors(x):
     for i in range(1, int(x ** 0.5) + 1):
         d, r = divmod(x, i)
         if r == 0:
-            res |= {i, d}
+            res.add(i)
+            res.add(d)
     return res
 
 
