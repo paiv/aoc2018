@@ -18,44 +18,32 @@ def solve(t):
     ay = int(min(p.imag for p in grid))
     by = int(max(p.imag for p in grid))
 
-    sys.setrecursionlimit(2300)
-    flow = set()
-    settle = set()
+    sys.setrecursionlimit(4000)
 
-    def fall(pos, dr=1j):
-        flow.add(pos)
+    def spread(pos, dr):
+        while grid.get(pos, '.') in '.|':
+            if grid.get(pos + 1j, '.') not in '#~':
+                fall(pos)
+                break
+            grid[pos] = '|'
+            pos += dr
+        return pos
+
+    def fall(pos):
+        if pos.imag > by: return
+        if grid.get(pos, '.') != '.': return
         grid[pos] = '|'
-        tpos = pos + 1j
 
-        if grid.get(tpos, '.') != '#' and tpos not in flow and tpos.imag <= by:
-            fall(tpos)
-
-        if grid.get(tpos, '.') not in '#~':
-            return False
-
-        lb = pos - 1
-        rb = pos + 1
-
-        lx = grid.get(lb, '.') == '#' or (lb not in flow) and fall(lb, -1)
-        rx = grid.get(rb, '.') == '#' or (rb not in flow) and fall(rb, 1)
-
-        if (dr == 1j) and (lx and rx):
-            settle.add(pos)
-            grid[pos] = '~'
-
-            while lb in flow:
-                settle.add(lb)
-                grid[lb] = '~'
-                lb -= 1
-
-            while rb in flow:
-                settle.add(rb)
-                grid[rb] = '~'
-                rb += 1
-
-        return ((dr == -1 and (lx or grid.get(lb, '.') == '#')) or
-            (dr == 1 and (rx or grid.get(rb, '.') == '#')))
-
+        if grid.get(pos + 1j, '.') == '.':
+            fall(pos + 1j)
+        else:
+            lb = spread(pos, -1)
+            rb = spread(pos, 1)
+            if grid.get(lb) == '#' == grid.get(rb):
+                for x in range(int(lb.real) + 1, int(rb.real)):
+                    grid[x + pos.imag * 1j] = '~'
+                grid[pos - 1j] = '.'
+                fall(pos - 1j)
 
     fall(500)
     grid[500] = '+'
