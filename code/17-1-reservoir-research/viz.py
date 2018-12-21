@@ -31,7 +31,7 @@ def dump(board, focus, window=30, windowx=30):
         print(so.getvalue(), end='')
 
 
-def render(text, output, window=65, rate=1, speed=1):
+def render(text, output, window=80, rate=1, speed=1):
     def render_frames():
         sprites = 'clay fall sand spring still'.split()
         sims = {n:Image.open(f'sprites/{n}.png') for n in sprites}
@@ -41,10 +41,12 @@ def render(text, output, window=65, rate=1, speed=1):
         ax = ay = bx = by = w = h = so = None
         prev = dict()
         prev_focus = 500
+        dash_up = False
 
-        def xx(focus):
-            top = max(0, int(focus.imag) - window)
+        def cropit(grid, focus):
+            top = max(0, int(focus.imag - window * 1.44))
             bottom = min(by + 1, top + window * 2)
+            top = max(0, bottom - window * 2)
             crop = dict()
             for y in range(top, bottom):
                 for x in range(ax, bx+1):
@@ -67,8 +69,8 @@ def render(text, output, window=65, rate=1, speed=1):
             grid[500] = '+'
 
             if ax is None:
-                ax = int(min(p.real for p in grid))
-                bx = int(max(p.real for p in grid))
+                ax = int(min(p.real for p in grid)) - 2
+                bx = int(max(p.real for p in grid)) + 2
                 ay = int(min(p.imag for p in grid))
                 by = int(max(p.imag for p in grid))
                 w, h = (bx - ax + 1), (by - ay + 1)
@@ -79,10 +81,21 @@ def render(text, output, window=65, rate=1, speed=1):
             if nframes % speed != 0:
                 continue
 
-            if 0 > focus.imag - prev_focus.imag > -(window * 0.8):
-                focus = prev_focus
+            dfy = focus.imag - prev_focus.imag
+            if dfy < 0:
+                if dash_up:
+                    focus = prev_focus - min(5, -dfy)*1j
+                    dash_up = focus.imag != prev_focus.imag
+                else:
+                    if (-dfy) < (window * 0.8):
+                        focus = prev_focus
+                    else:
+                        focus = prev_focus - min(5, -dfy)*1j
+                        dash_up = True
+            else:
+                dash_up = False
 
-            crop = xx(focus)
+            crop = cropit(grid, focus)
 
             yield so
             prev = crop
@@ -90,8 +103,18 @@ def render(text, output, window=65, rate=1, speed=1):
 
         else:
             if nframes % speed != 0:
-                crop = xx(focus)
+                prev = cropit(grid, focus)
                 yield so
+
+        while focus.imag < by:
+            prev = cropit(grid, focus)
+            yield so
+            focus += min(5, by - focus.imag)*1j
+
+        while focus.imag >= 0:
+            prev = cropit(grid, focus)
+            yield so
+            focus -= 1j
 
 
     if output.endswith('.gif'):
@@ -108,9 +131,10 @@ def render(text, output, window=65, rate=1, speed=1):
         out_fmt = '-codec:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -preset veryslow'
         if (w % 2) or (h % 2):
              out_fmt += ' -vf scale=trunc(iw/2)*2:trunc(ih/2)*2'
-        ffmpeg = f'ffmpeg -f rawvideo -s {w}x{h} -pix_fmt rgb24 -r {rate} -i - -an {out_fmt} -y {output}'.split()
+        quiet = '-hide_banner -loglevel error -nostats'
+        ffmpeg = f'ffmpeg {quiet} -f rawvideo -s {w}x{h} -pix_fmt rgb24 -r {rate} -i - -an {out_fmt} -y {output}'.split()
 
-        with subprocess.Popen(ffmpeg, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL) as codec:
+        with subprocess.Popen(ffmpeg, stdin=subprocess.PIPE, stderr=None) as codec:
 
             codec.stdin.write(im.tobytes())
             # im.close()
@@ -164,8 +188,12 @@ def solve(text):
 
     leaks = [(500, 1j)]
     yield (500, dict(grid))
+    focus = prev_focus = 0
 
     while leaks:
+        yield (500+focus*1j, dict(grid))
+        prev_focus = focus
+
         fringe = leaks
         leaks = set()
         focus = 0
@@ -173,7 +201,7 @@ def solve(text):
 
         for pos, dr in fringe:
             tpos = pos + dr
-            if tpos.imag > by:
+            if not (tpos.imag <= by):
                 continue
             c = prev.get(pos, '.')
             cc = grid.get(pos, '.')
@@ -229,7 +257,10 @@ def solve(text):
                                 leaks.add((tpos - 1j, -1))
                                 leaks.add((tpos - 1j, 1))
 
-        yield (500+focus*1j, dict(grid))
+    # focus = 500 + prev_focus*1j
+    # while focus.imag >= 0:
+    #     yield (focus, grid)
+    #     focus -= 1j
 
     # dump(grid, 500, window=100000, windowx=100000)
     res1 = sum(v in '~|' for k,v in grid.items() if k.imag >= ay)
