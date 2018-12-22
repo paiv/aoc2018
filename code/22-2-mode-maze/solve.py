@@ -28,6 +28,9 @@ def solve(t):
     def md(a, b):
         return abs(b.real - a.real) + abs(b.imag - a.imag)
 
+    def heu(p, tool):
+        return md(p, target) + (7 if tool != TORCH else 0)
+
     fringe = [(md(0, target), (0,0), TORCH, 0)]
     visited = set()
 
@@ -44,14 +47,14 @@ def solve(t):
 
         for tt in ({NEI, GEAR, TORCH} - {tool}):
             if tt in usable[risk(pos)]:
-                heapq.heappush(fringe, (md(pos, target) + path + 7, (pos.real, pos.imag), tt, path + 7))
+                heapq.heappush(fringe, (heu(pos, tt) + path + 7, (pos.real, pos.imag), tt, path + 7))
 
         for dr in (1, 1j, -1j, -1):
             tpos = pos + dr
             if tpos.real < 0 or tpos.imag < 0:
                 continue
             if tool in usable[risk(tpos)]:
-                heapq.heappush(fringe, (md(tpos, target) + path + 1, (tpos.real, tpos.imag), tool, path + 1))
+                heapq.heappush(fringe, (heu(tpos, tool) + path + 1, (tpos.real, tpos.imag), tool, path + 1))
 
     return path
 

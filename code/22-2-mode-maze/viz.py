@@ -173,6 +173,9 @@ def solve(t, all_frames=False):
     def md(a, b):
         return abs(b.real - a.real) + abs(b.imag - a.imag)
 
+    def heu(p, tool):
+        return md(p, target) + (7 if tool != TORCH else 0)
+
     fringe = [(md(0, target), 0, [((0,0), TORCH)])]
     visited = set()
     explored = dict()
@@ -199,7 +202,7 @@ def solve(t, all_frames=False):
 
         for tt in ({NEI, GEAR, TORCH} - {tool}):
             if tt in usable[risk(pos)]:
-                heapq.heappush(fringe, (md(pos, target) + cost + 7, cost + 7, path + [((pos.real, pos.imag), tt)]))
+                heapq.heappush(fringe, (heu(pos, tt) + cost + 7, cost + 7, path + [((pos.real, pos.imag), tt)]))
 
         if pos == target: continue
 
@@ -208,7 +211,7 @@ def solve(t, all_frames=False):
             if tpos.real < 0 or tpos.imag < 0:
                 continue
             if tool in usable[risk(tpos)]:
-                heapq.heappush(fringe, (md(tpos, target) + cost + 1, cost + 1, path + [((tpos.real, tpos.imag), tool)]))
+                heapq.heappush(fringe, (heu(tpos, tool) + cost + 1, cost + 1, path + [((tpos.real, tpos.imag), tool)]))
 
     print('\npart2:', cost)
 
