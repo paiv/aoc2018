@@ -44,42 +44,55 @@ def dump(grid, target, path):
         print(so.getvalue(), end='')
 
 
-def render(text, output, window=80, rate=1, speed=1):
-    def render(frame):
-        grid, target, path = frame
+def render(text, output, window=80, rate=1, speed=1, size=None):
+    w,h = size if size else (None, None)
 
-        sprites = 'blank gear goal narrow notool rock space torch water'.split()
-        symbols = '?^X|-. *='
-        sims = {n:Image.open(f'sprites/{n}.png') for n in sprites}
-        sprites = {k:sims[n] for n,k in zip(sprites, symbols)}
-        stridex, stridey = next(iter(sprites.values())).size
+    sprites = 'blank gear goal narrow notool rock space torch water'.split()
+    symbols = '?^X|-. *='
+    sims = {n:Image.open(f'sprites/5x5/{n}.png') for n in sprites}
+    sprites = {k:sims[n] for n,k in zip(sprites, symbols)}
+    stridex, stridey = next(iter(sprites.values())).size
 
-        for bg,tt,sp in itertools.product(' X', ' -^*', '?.=|'):
-            key = bg+tt+sp
-            bim = sprites[bg].convert('RGBA')
-            tim = sprites[tt].convert('RGBA')
+    for bg,tt,sp in itertools.product(' X', '?-^*', '?.=|'):
+        key = bg+tt+sp
+        bim = sprites[bg].convert('RGBA')
+        tim = sprites[tt].convert('RGBA')
+        s = Image.alpha_composite(bim, tim)
+        if bg != 'X':
             sim = sprites[sp].convert('RGBA')
-            s = Image.alpha_composite(bim, tim)
             s.alpha_composite(sim)
-            sprites[key] = s
+        sprites[key] = s
 
-        ax = int(min(p.real for p in grid))
-        ay = int(min(p.imag for p in grid))
-        bx = int(max(p.real for p in grid))
-        by = int(max(p.imag for p in grid))
-        w, h = (bx - ax + 1), (by - ay + 1)
+    def render(frame, w=None, h=None):
+        grid, target, path = frame
         path = {p: '-^*'[t] for p,t in path}
 
-        so = Image.new('RGBA', (w * stridex, h * stridey))
+        if w is None:
+            ax = int(min(p.real for p in grid))
+            bx = int(max(p.real for p in grid))
+            w = (bx - ax + 1)
+        else:
+            ax, bx = 0, w - 1
+
+        if h is None:
+            ay = int(min(p.imag for p in grid))
+            by = int(max(p.imag for p in grid))
+            h = (by - ay + 1)
+        else:
+            ay, by = 0, h - 1
+
+        so = Image.new('RGBA', ((w * stridex + 1) // 2 * 2, (h * stridey + 1) // 2 * 2))
 
         for y in range(ay, by+1):
             for x in range(ax, bx+1):
                 p = x + y*1j
-                k = '{} {}'.format('X' if p == target else ' ', grid.get(p, '?'))
+                k = '{}?{}'.format('X' if p == target else ' ', grid.get(p, '?'))
                 s = sprites[k]
                 so.paste(s, (x * stridex, y * stridey))
 
         for p, t in path.items():
+            if not (ax <= p.real <= bx and ay <= p.imag <= by):
+                continue
             k = '{}{}{}'.format('X' if p == target else ' ', t, '?' if p == target else grid.get(p, ' '))
             s = sprites[k]
             x, y = map(int, (p.real, p.imag))
@@ -87,13 +100,50 @@ def render(text, output, window=80, rate=1, speed=1):
 
         return so
 
+    def render_frames(scale=1):
+        for frame in solve(text, all_frames=True):
+            with render(frame, w=w, h=h) as im:
+                iw,ih = im.size
+                im2 = im.resize((iw*scale, ih*scale))
+                yield im2
+                im2.close()
+
 
     if output.endswith('.png'):
         frame = None
         for frame in solve(text): pass
 
-        with render(frame) as im:
+        with render(frame, w=w, h=h) as im:
             im.save(output)
+
+    elif output.endswith('.mp4'):
+        ims = render_frames(scale=2)
+        im = next(ims)
+        (iw, ih) = im.size
+
+        out_fmt = '-codec:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -preset veryslow'
+        if (w % 2) or (h % 2):
+             out_fmt += ' -vf scale=trunc(iw/2)*2:trunc(ih/2)*2'
+        quiet = '-hide_banner -loglevel error -nostats'
+        ffmpeg = f'ffmpeg {quiet} -f rawvideo -s {iw}x{ih} -pix_fmt rgba -r {rate} -i - -an {out_fmt} -y {output}'.split()
+
+        with subprocess.Popen(ffmpeg, stdin=subprocess.PIPE, stderr=None) as codec:
+
+            codec.stdin.write(im.tobytes())
+
+            for im in ims:
+                try:
+                    data = im.tobytes()
+                    codec.stdin.write(data)
+
+                    print('.', end='', flush=True)
+                except BrokenPipeError:
+                    print('!', file=sys.stderr)
+                    _, err = codec.communicate()
+                    print(err, file=sys.stderr)
+                    break
+            else:
+                print()
 
     else:
         raise NotImplementedError()
@@ -161,11 +211,11 @@ def solve(t, all_frames=False):
     print('part2:', cost)
 
 
-def viz(file, rate=1, output=None):
+def viz(file, rate=1, output=None, size=None):
     text = file.read()
 
     if output:
-        render(text, output, rate=rate)
+        render(text, output, rate=rate, size=size)
     else:
         for frame in solve(text, all_frames=True):
             dump(*frame)
@@ -179,7 +229,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Input file')
     parser.add_argument('-r', '--rate', default=20, type=float, help='Frame rate')
+    parser.add_argument('-z', '--size', help='Canvas size (x,y)')
     parser.add_argument('-o', '--output', help='Output file')
     args = parser.parse_args()
 
-    viz(file=args.file, rate=args.rate, output=args.output)
+    if args.size:
+        args.size = [*map(int, args.size.split(','))]
+
+    viz(file=args.file, rate=args.rate, output=args.output, size=args.size)
