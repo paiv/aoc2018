@@ -44,7 +44,7 @@ def dump(grid, target, path):
         print(so.getvalue(), end='')
 
 
-def render(text, output, window=80, rate=1, speed=1, size=None):
+def render(text, output, window=80, rate=1, speed=1, size=None, scale=1):
     w,h = size if size else (None, None)
 
     sprites = 'blank gear goal narrow notool rock space torch water'.split()
@@ -117,7 +117,7 @@ def render(text, output, window=80, rate=1, speed=1, size=None):
             im.save(output)
 
     elif output.endswith('.mp4'):
-        ims = render_frames(scale=2)
+        ims = render_frames(scale=scale)
         im = next(ims)
         (iw, ih) = im.size
 
@@ -201,6 +201,8 @@ def solve(t, all_frames=False):
             if tt in usable[risk(pos)]:
                 heapq.heappush(fringe, (md(pos, target) + cost + 7, cost + 7, path + [((pos.real, pos.imag), tt)]))
 
+        if pos == target: continue
+
         for dr in (1, 1j, -1j, -1):
             tpos = pos + dr
             if tpos.real < 0 or tpos.imag < 0:
@@ -208,14 +210,14 @@ def solve(t, all_frames=False):
             if tool in usable[risk(tpos)]:
                 heapq.heappush(fringe, (md(tpos, target) + cost + 1, cost + 1, path + [((tpos.real, tpos.imag), tool)]))
 
-    print('part2:', cost)
+    print('\npart2:', cost)
 
 
-def viz(file, rate=1, output=None, size=None):
+def viz(file, rate=1, output=None, size=None, scale=1):
     text = file.read()
 
     if output:
-        render(text, output, rate=rate, size=size)
+        render(text, output, rate=rate, size=size, scale=scale)
     else:
         for frame in solve(text, all_frames=True):
             dump(*frame)
@@ -229,11 +231,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Input file')
     parser.add_argument('-r', '--rate', default=20, type=float, help='Frame rate')
-    parser.add_argument('-z', '--size', help='Canvas size (x,y)')
+    parser.add_argument('-z', '--size', help='Map size (x,y)')
+    parser.add_argument('-c', '--scale', default=1, type=int, help='Picture scale factor')
     parser.add_argument('-o', '--output', help='Output file')
     args = parser.parse_args()
 
     if args.size:
         args.size = [*map(int, args.size.split(','))]
 
-    viz(file=args.file, rate=args.rate, output=args.output, size=args.size)
+    viz(file=args.file, rate=args.rate, output=args.output, size=args.size, scale=args.scale)
