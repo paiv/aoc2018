@@ -124,7 +124,7 @@ int main(int argc, char const *argv[]) {
         ip = mem[rip];
     }
 
-    printf("%d\n", res);
+    printf("part2: %d\n", res);
 
     return 0;
 }
