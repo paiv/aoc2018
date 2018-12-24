@@ -1,3 +1,5 @@
 /.prep
 /.venv*
 /*vm
+
+__pycache__
