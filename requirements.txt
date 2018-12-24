@@ -6,3 +6,4 @@ numpy
 Pillow
 PyYaml
 requests
+-e tardis
