@@ -1,4 +1,4 @@
-#!/usr/bin/env pypy3 -OO
+#!/usr/bin/env python -OO
 import re
 import sys
 
@@ -98,12 +98,21 @@ def solve(t):
         size = sum(g['size'] for g in groups.values())
         return (army, size)
 
-    boost = 0
+
+    lo = hi = boost = 0
     winner = None
-    while winner != IMMSYS:
+    while not (winner == IMMSYS and lo == hi):
         trace('boost', boost)
         winner, res = battle(groups, boost)
-        boost += 1
+        if winner == IMMSYS:
+            hi = boost
+            boost = (lo + hi) // 2
+        elif not hi:
+            lo = boost
+            boost = 1 if not boost else boost * 2
+        else:
+            lo = boost + 1
+            boost = (lo + hi) // 2
 
     trace(res)
     return res
