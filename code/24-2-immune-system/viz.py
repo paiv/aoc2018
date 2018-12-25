@@ -1,20 +1,51 @@
-#!/usr/bin/env pypy3
+#!/usr/bin/env python
+import copy
+import io
 import re
-import sys
+import time
+from collections import Counter
 
 
-VERBOSE = 2 if __debug__ else 1
-
-def trace(*args, **kwargs):
-    if VERBOSE > 1: print(*args, file=sys.stderr, **kwargs)
+IMMSYS, INFECT = 1, 2
 
 
-def solve(t):
+def dump(groups, battle):
+    groups = sorted(groups.items())
+    imms = [(gid, g) for gid,g in groups if g['army'] == IMMSYS]
+    infs = [(gid, g) for gid,g in groups if g['army'] == INFECT]
+
+    def print_groups(so, gs):
+        if gs:
+            for k, g in gs:
+                gid, n = g['id'][1], g['size']
+                s = '' if n == 1 else 's'
+                print(f'Group {gid} contains {n} unit{s}', file=so)
+        else:
+            print('No groups remain.', file=so)
+
+    with io.StringIO() as so:
+        print('Immune System:', file=so)
+        print_groups(so, imms)
+        print('Infection:', file=so)
+        print_groups(so, infs)
+        print('', file=so)
+
+        for a, b, kia in battle:
+            ak, aid = a
+            bk, bid = b
+            army = 'Immune System' if ak == IMMSYS else 'Infection'
+            s = '' if kia == 1 else 's'
+            t = f'{army} group {aid} attacks defending group {bid}, killing {kia} unit{s}'
+            print(t, file=so)
+        print(so.getvalue())
+
+
+def solve(t, boost=0):
     rx = re.compile(r'(\d+) units each with (\d+) hit points(?: \((.*?)\))? with an attack that does (\d+) (\w+) damage at initiative (\d+)')
 
-    IMMSYS, INFECT = 1, 2
     army = None
     groups = dict()
+    ids = Counter()
 
     for s in t.splitlines():
         if s == 'Immune System:':
@@ -28,7 +59,8 @@ def solve(t):
             dts = dict((s.split()[0], tuple(x.strip(',') for x in s.split()[2:])) for s in ts.split(';')) if ts else dict()
             weak = frozenset(dts.get('weak', tuple()))
             immune = frozenset(dts.get('immune', tuple()))
-            gid = len(groups)+1
+            ids[army] += 1
+            gid = (army, ids[army])
             groups[gid] = dict(army=army, id=gid, size=n, hp=hp,
                 weak=weak, immune=immune, atk=atk, typeatk=ats, initiative=ni)
 
@@ -60,85 +92,74 @@ def solve(t):
                     targets.append((dmg, bpwr, bni, bg['id']))
         return targets
 
-    def battle(groups, boost):
-        prev = dict()
-        for k,g in groups.items():
-            g = dict(g)
-            aboo = (boost if g['army'] == IMMSYS else 0)
-            g['atk'] += aboo
-            prev[k] = g
 
-        groups, prev = prev, None
+    prev = dict()
+    for k,g in groups.items():
+        g = dict(g)
+        boo = (boost if g['army'] == IMMSYS else 0)
+        g['atk'] += boo
+        prev[k] = g
 
-        while groups:
-            if groups == prev: break
-            prev = {k:dict(g) for k,g in groups.items()}
+    groups, prev = prev, None
 
-            targets = dict()
-            for ag in sorted(groups.values(), key=bypower):
-                for _, _, _, bgid in sorted(estimate_attacks(ag, groups), reverse=True):
-                    if bgid not in targets.values():
-                        targets[ag['id']] = bgid
-                        break
+    while groups:
+        record_start = copy.deepcopy(groups)
+        record_battle = list()
 
-            if not targets: break
+        if groups == prev: break
+        prev = copy.deepcopy(groups)
 
-            for ag in sorted(groups.values(), key=byinitiative):
-                bgid = targets.get(ag['id'])
-                if bgid:
-                    bg = groups[bgid]
-                    dmg = attack_damage(ag, bg)
-                    n, hp = bg['size'], bg['hp']
-                    bg['size'] = max(0, n * hp - dmg + hp - 1) // hp
+        targets = dict()
+        for ag in sorted(groups.values(), key=bypower):
+            for _, _, _, bgid in sorted(estimate_attacks(ag, groups), reverse=True):
+                if bgid not in targets.values():
+                    targets[ag['id']] = bgid
+                    break
 
-            groups = dict((k,g) for k, g in groups.items() if g['size'])
+        if not targets: break
 
-        armies = set(g['army'] for g in groups.values())
-        army = armies.pop() if len(armies) == 1 else None
-        size = sum(g['size'] for g in groups.values())
-        return (army, size)
+        for ag in sorted(groups.values(), key=byinitiative):
+            if not ag['size']: continue
+            bgid = targets.get(ag['id'])
+            if bgid:
+                bg = groups[bgid]
+                dmg = attack_damage(ag, bg)
+                n, hp = bg['size'], bg['hp']
+                kia = min(n, dmg // hp)
+                bg['size'] = n - kia
+                record_battle.append((ag['id'], bgid, kia))
+
+        groups = dict((k,g) for k, g in groups.items() if g['size'])
+
+        yield (record_start, record_battle)
+
+    record_start = copy.deepcopy(groups)
+    record_battle = list()
+    yield (record_start, record_battle)
+
+    armies = set(g['army'] for g in groups.values())
+    army = armies.pop() if len(armies) == 1 else None
+    size = sum(g['size'] for g in groups.values())
+
+    print('winner:', army, 'size:', size)
 
 
-    if 0:
-        lo = hi = boost = 0
-        winner = None
-        while not (winner == IMMSYS and lo == hi):
-            trace('boost', boost)
-            winner, res = battle(groups, boost)
-            if winner == IMMSYS:
-                hi = boost
-                boost = (lo + hi) // 2
-            elif not hi:
-                lo = boost
-                boost = 1 if not boost else boost * 2
-            else:
-                lo = boost + 1
-                boost = (lo + hi) // 2
+def viz(file, boost=0, rate=1):
+    text = file.read()
 
-    else:
-        winner = boost = 0
-        best = float('inf')
-        for boost in range(129):
-            winner, res = battle(groups, boost)
-            if winner == IMMSYS: best = min(best, boost)
-            trace('=%.'[winner or 0], end='', flush=True)
-        trace()
-        trace('boost', best)
-
-    return res
+    for frame in solve(text, boost=boost):
+        dump(*frame)
+        time.sleep(1/rate)
 
 
 if __name__ == '__main__':
-    if 1:
-        import fileinput
-        with fileinput.input() as f:
-            text = ''.join(f).strip('\n')
+    import argparse
+    import sys
 
-        print(solve(text))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help='Input file')
+    parser.add_argument('-b', '--boost', default=0, type=int, help='Boost immune system')
+    parser.add_argument('-r', '--rate', default=3, type=float, help='Frame rate')
+    args = parser.parse_args()
 
-    else:
-        import glob
-        for fn in sorted(glob.glob('data/*.txt')):
-            with open(fn) as f:
-                print(fn[5:7], end=': ', flush=True)
-                solve(f.read())
+    viz(file=args.file, rate=args.rate, boost=args.boost)
