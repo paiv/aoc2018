@@ -1,4 +1,4 @@
-#!/usr/bin/env python -OO
+#!/usr/bin/env pypy3 -OO
 import re
 import sys
 
@@ -12,7 +12,7 @@ def trace(*args, **kwargs):
 def solve(t):
     rx = re.compile(r'(\d+) units each with (\d+) hit points(?: \((.*?)\))? with an attack that does (\d+) (\w+) damage at initiative (\d+)')
 
-    IMMSYS, INFECT = range(2)
+    IMMSYS, INFECT = 1, 2
     army = None
     groups = dict()
 
@@ -68,7 +68,7 @@ def solve(t):
             g['atk'] += aboo
             prev[k] = g
 
-        groups, prev = prev, groups
+        groups, prev = prev, None
 
         while groups:
             if groups == prev: break
@@ -99,20 +99,11 @@ def solve(t):
         return (army, size)
 
 
-    lo = hi = boost = 0
-    winner = None
-    while not (winner == IMMSYS and lo == hi):
+    winner = boost = 0
+    while winner != IMMSYS:
         trace('boost', boost)
         winner, res = battle(groups, boost)
-        if winner == IMMSYS:
-            hi = boost
-            boost = (lo + hi) // 2
-        elif not hi:
-            lo = boost
-            boost = 1 if not boost else boost * 2
-        else:
-            lo = boost + 1
-            boost = (lo + hi) // 2
+        boost += 1
 
     trace(res)
     return res

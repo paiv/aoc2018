@@ -17,7 +17,7 @@ class somed(dict):
 def solve(t):
     rx = re.compile(r'(\d+) units each with (\d+) hit points(?: \((.*?)\))? with an attack that does (\d+) (\w+) damage at initiative (\d+)')
 
-    IMMSYS, INFECT = range(2)
+    IMMSYS, INFECT = 1, 2
     army = None
     groups = dict()
 
