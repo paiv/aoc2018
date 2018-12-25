@@ -1,4 +1,4 @@
-#!/usr/bin/env pypy3 -OO
+#!/usr/bin/env pypy3
 import re
 import sys
 
@@ -99,35 +99,46 @@ def solve(t):
         return (army, size)
 
 
-    winner = boost = 0
-    while winner != IMMSYS:
-        trace('boost', boost)
-        winner, res = battle(groups, boost)
-        boost += 1
+    if 0:
+        lo = hi = boost = 0
+        winner = None
+        while not (winner == IMMSYS and lo == hi):
+            trace('boost', boost)
+            winner, res = battle(groups, boost)
+            if winner == IMMSYS:
+                hi = boost
+                boost = (lo + hi) // 2
+            elif not hi:
+                lo = boost
+                boost = 1 if not boost else boost * 2
+            else:
+                lo = boost + 1
+                boost = (lo + hi) // 2
 
-    trace(res)
+    else:
+        winner = boost = 0
+        best = float('inf')
+        for boost in range(129):
+            winner, res = battle(groups, boost)
+            if winner == IMMSYS: best = min(best, boost)
+            trace('=%.'[winner or 0], end='', flush=True)
+        trace()
+        trace('boost', best)
+
     return res
 
 
-def test():
-    t = r"""
-Immune System:
-17 units each with 5390 hit points (weak to radiation, bludgeoning) with an attack that does 4507 fire damage at initiative 2
-989 units each with 1274 hit points (immune to fire; weak to bludgeoning, slashing) with an attack that does 25 slashing damage at initiative 3
-
-Infection:
-801 units each with 4706 hit points (weak to radiation) with an attack that does 116 bludgeoning damage at initiative 1
-4485 units each with 2961 hit points (immune to radiation; weak to fire, cold) with an attack that does 12 slashing damage at initiative 4
-""".strip('\n')
-
-    assert solve(t) == 51
-
-
 if __name__ == '__main__':
-    test()
+    if 1:
+        import fileinput
+        with fileinput.input() as f:
+            text = ''.join(f).strip('\n')
 
-    import fileinput
-    with fileinput.input() as f:
-        text = ''.join(f).strip('\n')
+        print(solve(text))
 
-    print(solve(text))
+    else:
+        import glob
+        for fn in sorted(glob.glob('data/*.txt')):
+            with open(fn) as f:
+                print(fn[5:7], end=': ', flush=True)
+                solve(f.read())
