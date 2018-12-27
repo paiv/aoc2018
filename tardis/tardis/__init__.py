@@ -1,2 +1,3 @@
 from .assembler import Assembler
-from .tardis import Tardis, TardisC
+from .disasm import TardisDisasm
+from .tardis import Tardis, TardisAsm, TardisC

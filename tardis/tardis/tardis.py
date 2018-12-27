@@ -50,13 +50,25 @@ class Tardis(BaseTardis):
         return generators.GeneratorPy()
 
 
+class TardisAsm(BaseTardis):
+    def _generator(self):
+        return generators.GeneratorCppAsm()
+
+
 class TardisC(BaseTardis):
     def _generator(self):
-        return generators.GeneratorCpp()
+        return generators.GeneratorDisasm()
 
 
-def assemble_files(files, outfile, verbose=False):
+def assemble_files(files, outfile, generator=None, verbose=False):
     tds = TardisC()
+
+    if generator:
+        generator = generator.lower()
+        if generator == 'c-asm':
+            tds = TardisAsm()
+        elif generator == 'py':
+            tds = Tardis()
 
     for fp in files:
         tds.load(fp)

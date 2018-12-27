@@ -1,4 +1,5 @@
 import jinja2
+from . import disasm
 from . import vm
 
 
@@ -16,8 +17,7 @@ class BaseGenerator:
         model = self._transpile(image)
 
         for text in tpl.generate(model):
-            print(text, end='', file=output)
-        print('', file=output)
+            output.write(text)
 
 
 class Generator(BaseGenerator):
@@ -43,7 +43,7 @@ class GeneratorCppDispatch(Generator):
     template_name = 'dispatch.cpp'
 
 
-class GeneratorCpp(BaseGenerator):
+class GeneratorCppAsm(BaseGenerator):
     template_name = 'program.cpp'
 
     def _transpile(self, image):
@@ -184,6 +184,22 @@ class GeneratorCpp(BaseGenerator):
             emit(f'src{i}: {instr}', semi=semi)
 
         emit(f'srcexit:')
+
+        return dict(
+            registers=regs,
+            program=program,
+        )
+
+
+class GeneratorDisasm(BaseGenerator):
+    template_name = 'program.cpp'
+
+    def _transpile(self, image):
+        dasm = disasm.TardisDisasm()
+        program = dasm.process(image)
+
+        regs = {f'r{i}': x for i, x in enumerate(image.regs)}
+        program = program.splitlines()
 
         return dict(
             registers=regs,

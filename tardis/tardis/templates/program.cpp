@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-using namespace std;
-
 typedef uint8_t u8;
 typedef uint32_t u32;
 
