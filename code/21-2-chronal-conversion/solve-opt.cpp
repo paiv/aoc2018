@@ -1,4 +1,5 @@
 // c++ -O2 solve.cpp -o solve
+// Generated with Tardis https://github.com/paiv/aoc2018
 #include <stdint.h>
 #include <stdio.h>
 #include <unordered_set>
