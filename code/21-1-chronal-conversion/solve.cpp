@@ -2,119 +2,42 @@
 #include <stdint.h>
 #include <stdio.h>
 
-
-typedef enum opcodes {
-    addi,
-    addr,
-    bani,
-    bori,
-    eqri,
-    eqrr,
-    gtir,
-    gtrr,
-    muli,
-    seti,
-    setr,
-} opcodes;
-
-
 typedef uint8_t u8;
 typedef uint32_t u32;
 
 
-static const u8 rip = 2;
-
-static const u32
-prog[][4] = {
-    {seti, 123, 0, 5},
-    {bani, 5, 456, 5},
-    {eqri, 5, 72, 5},
-    {addr, 5, 2, 2},
-    {seti, 0, 0, 2},
-    {seti, 0, 9, 5},
-    {bori, 5, 65536, 3},
-    {seti, 7586220, 4, 5},
-    {bani, 3, 255, 1},
-    {addr, 5, 1, 5},
-    {bani, 5, 16777215, 5},
-    {muli, 5, 65899, 5},
-    {bani, 5, 16777215, 5},
-    {gtir, 256, 3, 1},
-    {addr, 1, 2, 2},
-    {addi, 2, 1, 2},
-    {seti, 27, 9, 2},
-    {seti, 0, 9, 1},
-    {addi, 1, 1, 4},
-    {muli, 4, 256, 4},
-    {gtrr, 4, 3, 4},
-    {addr, 4, 2, 2},
-    {addi, 2, 1, 2},
-    {seti, 25, 4, 2},
-    {addi, 1, 1, 1},
-    {seti, 17, 2, 2},
-    {setr, 1, 6, 3},
-    {seti, 7, 8, 2},
-    {eqrr, 5, 0, 1},
-    {addr, 1, 2, 2},
-    {seti, 5, 0, 2},
-};
-
-
-static inline void
-dispatch(const u32* instr, u32* mem) {
-    switch (instr[0]) {
-        case addi:
-            mem[instr[3]] = mem[instr[1]] + instr[2];
-            break;
-        case addr:
-            mem[instr[3]] = mem[instr[1]] + mem[instr[2]];
-            break;
-        case bani:
-            mem[instr[3]] = mem[instr[1]] & instr[2];
-            break;
-        case bori:
-            mem[instr[3]] = mem[instr[1]] | instr[2];
-            break;
-        case eqri:
-            mem[instr[3]] = mem[instr[1]] == instr[2];
-            break;
-        case eqrr:
-            mem[instr[3]] = mem[instr[1]] == mem[instr[2]];
-            break;
-        case gtir:
-            mem[instr[3]] = instr[1] > mem[instr[2]];
-            break;
-        case gtrr:
-            mem[instr[3]] = mem[instr[1]] > mem[instr[2]];
-            break;
-        case muli:
-            mem[instr[3]] = mem[instr[1]] * instr[2];
-            break;
-        case seti:
-            mem[instr[3]] = instr[1];
-            break;
-        case setr:
-            mem[instr[3]] = mem[instr[1]];
-            break;
-    }
-}
-
-
 int main(int argc, char const *argv[]) {
-    const int progn = sizeof(prog) / sizeof(prog[0]);
-    u32 mem[6] = {};
-
-    for (int ip = 0; ip >= 0 && ip < progn; ip++) {
-        if (ip == 29) {
-            break;
+    u32 r0 = 0, r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0;
+    r5 = 123;
+    do {
+        r5 &= 456;
+    } while (r5 != 72);
+    r5 = 0;
+    do {
+        r3 = r5 | 65536;
+        r5 = 7586220;
+    ln8:
+        r1 = r3 & 255;
+        r5 += r1;
+        r5 &= 16777215;
+        r5 *= 65899;
+        r5 &= 16777215;
+        if (256 <= r3) {
+            r1 = 0;
+    ln18:
+            r4 = r1 + 1;
+            r4 *= 256;
+            if (r4 <= r3) {
+                r1 += 1;
+                goto ln18;
+            }
+            r3 = r1;
+            goto ln8;
         }
+    // } while (r5 != r0);
+    } while (false);
 
-        mem[rip] = ip;
-        dispatch(prog[ip], mem);
-        ip = mem[rip];
-    }
-
-    printf("%d\n", mem[5]);
+    printf("part1: %d\n", r5);
 
     return 0;
 }
