@@ -1,3 +1,4 @@
+import io
 import re
 from . import vm
 
@@ -8,17 +9,27 @@ class Assembler:
         _ids = 0
 
         def __init__(self, fp):
-            self.name = fp.name or '<{}>'.format(self._next_id())
             self.fp = fp
+            self.name = None
+            if hasattr(fp, 'name'):
+                self.name = fp.name
+            if not self.name:
+                self.name = '<{}>'.format(self._next_id())
 
-        def _next_id():
+        def _next_id(self):
             Assembler.Input._ids += 1
             return Assembler.Input._ids
+
+        def __iter__(self):
+            for line in self.fp:
+                yield line
 
     def __init__(self):
         self.inputs = list()
 
     def load(self, fp):
+        if isinstance(fp, str):
+            fp = io.StringIO(fp)
         fin = Assembler.Input(fp)
         self.inputs.append(fin)
 
@@ -31,7 +42,7 @@ class Assembler:
         program = list()
 
         for src in self.inputs:
-            for lineno, line in enumerate(src.fp, 1):
+            for lineno, line in enumerate(src, 1):
                 line = line.strip()
                 if not line: continue
 
