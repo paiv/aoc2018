@@ -1,4 +1,5 @@
 #!/usr/bin/env pypy3
+# Generated with Tardis https://github.com/paiv/aoc2018
 
 {% if 'addi' in instructions %}
 def addi(a, b, c, regs):

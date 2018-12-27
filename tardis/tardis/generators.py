@@ -1,3 +1,4 @@
+import io
 import jinja2
 from . import disasm
 from . import vm
@@ -16,8 +17,14 @@ class BaseGenerator:
 
         model = self._transpile(image)
 
+        if not output:
+            output = io.StringIO()
+
         for text in tpl.generate(model):
             output.write(text)
+
+        if hasattr(output, 'getvalue'):
+            return output.getvalue()
 
 
 class Generator(BaseGenerator):

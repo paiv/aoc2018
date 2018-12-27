@@ -25,7 +25,7 @@ class BaseTardis:
             self.compile()
 
         gen = self._generator()
-        gen.emit(self.image, output=output)
+        return gen.emit(self.image, output=output)
 
     def run(self):
         if not self.image:
